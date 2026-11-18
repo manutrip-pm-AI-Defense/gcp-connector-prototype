@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Defense — Connect to Google Cloud Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa; color: #1a2332; font-size: 14px; min-height: 100vh;
+        }
+        code { font-family: 'SF Mono', Consolas, 'Liberation Mono', monospace; font-size: 11px; background: #f1f5f9; padding: 1px 4px; border-radius: 2px; }
+
+        .shell { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 220px; background: #1a2332; color: #c8d6e5; padding: 16px 0;
+            flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100;
+        }
+        .sidebar-logo { padding: 8px 16px 16px; border-bottom: 1px solid #2d3a4a; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .sidebar-logo .cisco-logo { font-size: 10px; color: #64748b; letter-spacing: 0.5px; }
+        .sidebar-logo strong { color: #fff; font-size: 13px; }
+        .sidebar-section { padding: 12px 16px 4px; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sidebar-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.1s; color: #c8d6e5; }
+        .sidebar-item:hover { background: #2d3a4a; }
+        .sidebar-item.active { background: #049fd9; color: #fff; }
+        .sidebar-item .chevron { margin-left: auto; font-size: 10px; }
+        .sidebar-divider { border-top: 1px solid #2d3a4a; margin: 8px 0; }
+        .sidebar-sub { padding-left: 36px; font-size: 12px; }
+
+        .main-wrap { margin-left: 220px; flex: 1; }
+
+        /* ── Topbar ── */
+        .topbar {
+            background: #fff; border-bottom: 1px solid #e2e8f0; padding: 8px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50; height: 48px;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b; }
+        .org-badge { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; color: #1a2332; }
+        .org-badge .org-icon { color: #049fd9; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: #64748b; }
+
+        .content { padding: 24px; max-width: 840px; }
+
+        /* ── Breadcrumb & Page header ── */
+        .breadcrumb { font-size: 12px; color: #049fd9; margin-bottom: 12px; cursor: pointer; }
+        .breadcrumb:hover { text-decoration: underline; }
+        .page-title { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+        .page-subtitle { font-size: 13px; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+
+        /* ── Stepper ── */
+        .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+        .step { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .step-circle {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; flex-shrink: 0;
+        }
+        .step.active .step-circle { background: #049fd9; color: #fff; }
+        .step.done .step-circle { background: #059669; color: #fff; }
+        .step.pending .step-circle { background: #e2e8f0; color: #94a3b8; }
+        .step-label { font-size: 13px; font-weight: 500; }
+        .step.active .step-label { color: #1a2332; }
+        .step.pending .step-label { color: #94a3b8; }
+        .step.done .step-label { color: #059669; }
+        .step-connector { width: 48px; height: 2px; background: #e2e8f0; margin: 0 12px; }
+        .step-connector.done { background: #059669; }
+
+        /* ── Section cards ── */
+        .section { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+        .section-header {
+            padding: 14px 20px; font-size: 14px; font-weight: 600;
+            border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;
+        }
+        .section-icon { font-size: 18px; }
+        .section-body { padding: 20px; }
+        .section-hint { font-size: 12px; color: #64748b; margin-bottom: 16px; line-height: 1.5; }
+
+        /* ── Form elements ── */
+        .form-group { margin-bottom: 20px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { display: block; font-size: 13px; font-weight: 500; color: #1a2332; margin-bottom: 6px; }
+        .required { color: #dc2626; }
+        .form-input {
+            width: 100%; padding: 8px 12px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 13px; color: #1a2332; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .form-input:focus { outline: none; border-color: #049fd9; box-shadow: 0 0 0 2px rgba(4,159,217,0.15); }
+        .form-input::placeholder { color: #94a3b8; }
+        .form-help { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+        textarea.form-input {
+            font-family: 'SF Mono', Consolas, 'Liberation Mono', monospace;
+            font-size: 12px; resize: vertical; min-height: 64px;
+        }
+
+        /* ── Scope radio cards ── */
+        .scope-group { display: flex; gap: 10px; }
+        .scope-card {
+            flex: 1; padding: 14px; border: 2px solid #e2e8f0; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s; text-align: center;
+        }
+        .scope-card:hover { border-color: #cbd5e1; }
+        .scope-card.selected { border-color: #049fd9; background: #f0f9ff; }
+        .scope-card input { display: none; }
+        .scope-card-label { font-size: 13px; font-weight: 600; color: #1a2332; margin-bottom: 4px; }
+        .scope-card-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
+
+        /* ── Auth radio cards ── */
+        .auth-group { display: flex; gap: 10px; }
+        .auth-card {
+            flex: 1; padding: 14px; border: 2px solid #e2e8f0; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .auth-card:hover { border-color: #cbd5e1; }
+        .auth-card.selected { border-color: #049fd9; background: #f0f9ff; }
+        .auth-card input { display: none; }
+        .auth-card-label { font-size: 13px; font-weight: 600; color: #1a2332; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .auth-card-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
+
+        /* ── Badges ── */
+        .badge-rec { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: #049fd9; color: #fff; }
+        .badge-legacy { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: #f1f5f9; color: #64748b; }
+
+        /* ── Capability checkboxes ── */
+        .cap-list { display: flex; flex-direction: column; gap: 10px; }
+        .cap-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 6px;
+            background: #fff;
+        }
+        .cap-item input[type="checkbox"] { margin-top: 2px; accent-color: #049fd9; width: 16px; height: 16px; flex-shrink: 0; }
+        .cap-item input[type="checkbox"]:disabled { opacity: 0.6; }
+        .cap-label { font-size: 13px; font-weight: 500; color: #1a2332; }
+        .cap-label.disabled { color: #94a3b8; }
+        .cap-desc { font-size: 12px; color: #64748b; margin-top: 2px; line-height: 1.4; }
+        .cap-tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; background: #e0f2fe; color: #0369a1; margin-left: 6px; }
+
+        /* ── Info box ── */
+        .info-box {
+            background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;
+            padding: 14px 16px; margin-top: 16px;
+        }
+        .info-box-title { font-size: 12px; font-weight: 600; color: #0369a1; margin-bottom: 6px; }
+        .info-box-body { font-size: 12px; color: #475569; line-height: 1.6; }
+        .info-box-body code { background: #e0f2fe; }
+
+        /* ── Auto-create checkbox ── */
+        .inline-check { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+        .inline-check input { accent-color: #049fd9; width: 15px; height: 15px; }
+        .inline-check label { font-size: 12px; color: #475569; font-weight: 400; cursor: pointer; }
+
+        /* ── Advanced toggle ── */
+        .advanced-toggle {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 6px;
+            cursor: pointer; background: #fff; transition: background 0.15s;
+            margin-bottom: 20px;
+        }
+        .advanced-toggle:hover { background: #f8fafc; }
+        .advanced-toggle .arrow { font-size: 10px; color: #64748b; transition: transform 0.2s; }
+        .advanced-toggle.open .arrow { transform: rotate(90deg); }
+        .advanced-toggle .adv-label { font-size: 13px; font-weight: 500; color: #1a2332; }
+        .advanced-toggle .adv-hint { font-size: 11px; color: #94a3b8; margin-left: auto; }
+
+        .advanced-panel { display: none; margin-bottom: 20px; }
+        .advanced-panel.open { display: block; }
+
+        /* ── Region selector ── */
+        .region-radio-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .region-radio {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 6px;
+            cursor: pointer; transition: all 0.15s; background: #fff;
+        }
+        .region-radio:hover { border-color: #cbd5e1; }
+        .region-radio.selected { border-color: #049fd9; background: #f0f9ff; }
+        .region-radio input[type="radio"] { margin-top: 2px; accent-color: #049fd9; }
+        .region-radio-label { font-size: 13px; font-weight: 500; color: #1a2332; }
+        .region-radio-desc { font-size: 11px; color: #64748b; }
+
+        .region-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+            padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+        }
+        .region-chip {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 10px; border-radius: 4px; font-size: 12px;
+            background: #fff; border: 1px solid #e2e8f0; cursor: pointer;
+            transition: all 0.1s;
+        }
+        .region-chip:hover { border-color: #049fd9; }
+        .region-chip input { accent-color: #049fd9; width: 14px; height: 14px; }
+        .region-chip .region-name { font-weight: 500; color: #1a2332; }
+        .region-chip .region-loc { color: #94a3b8; font-size: 11px; }
+
+        /* ── Deploy step ── */
+        .prereq-banner {
+            background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px;
+            padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 10px;
+            font-size: 12px; color: #92400e; line-height: 1.5;
+        }
+        .prereq-banner .icon { font-size: 16px; flex-shrink: 0; }
+
+        .script-box {
+            background: #1a2332; border-radius: 8px; padding: 16px 20px;
+            font-family: 'SF Mono', Consolas, 'Liberation Mono', monospace;
+            font-size: 12px; color: #c8d6e5; line-height: 1.7;
+            position: relative; margin-bottom: 12px; overflow-x: auto;
+        }
+        .script-box .kw { color: #7dd3fc; }
+        .script-box .str { color: #86efac; }
+        .script-box .cmt { color: #64748b; }
+
+        .script-actions { display: flex; gap: 8px; margin-bottom: 20px; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: none; transition: all 0.15s;
+        }
+        .btn-primary { background: #049fd9; color: #fff; }
+        .btn-primary:hover { background: #0284b8; }
+        .btn-outline { background: #fff; color: #049fd9; border: 1px solid #049fd9; }
+        .btn-outline:hover { background: #f0f9ff; }
+        .btn-ghost { background: transparent; color: #64748b; border: 1px solid #e2e8f0; }
+        .btn-ghost:hover { background: #f8fafc; color: #1a2332; }
+
+        .upload-zone {
+            border: 2px dashed #e2e8f0; border-radius: 8px; padding: 24px;
+            text-align: center; color: #94a3b8; font-size: 13px;
+            transition: border-color 0.15s; cursor: pointer;
+        }
+        .upload-zone:hover { border-color: #049fd9; }
+
+        /* ── Verification checks ── */
+        .verify-list { display: flex; flex-direction: column; gap: 8px; }
+        .verify-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; }
+        .verify-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .verify-icon.pass { background: #d1fae5; color: #059669; }
+        .verify-icon.warn { background: #fef3c7; color: #d97706; }
+        .verify-icon.fail { background: #fee2e2; color: #dc2626; }
+        .verify-icon.pending { background: #e2e8f0; color: #94a3b8; }
+        .verify-label { font-size: 13px; font-weight: 500; color: #1a2332; }
+        .verify-detail { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+        /* ── Inventory summary table ── */
+        .inv-table { width: 100%; border-collapse: collapse; }
+        .inv-table thead th {
+            text-align: left; padding: 8px 14px; font-size: 11px; color: #64748b;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+            border-bottom: 2px solid #e2e8f0; background: #f8fafc;
+        }
+        .inv-table tbody td { padding: 8px 14px; font-size: 13px; color: #1a2332; border-bottom: 1px solid #f1f5f9; }
+        .inv-table tbody td.num { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        /* ── Success banner ── */
+        .success-banner {
+            background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px;
+            padding: 12px 16px; display: flex; gap: 10px; font-size: 13px; color: #065f46;
+            margin-bottom: 16px; align-items: center;
+        }
+        .success-banner .icon { font-size: 18px; }
+
+        /* ── Stat cards ── */
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; text-align: center; }
+        .stat-card .stat-value { font-size: 20px; font-weight: 700; color: #1a2332; }
+        .stat-card .stat-label { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+        /* ── Footer actions ── */
+        .footer-actions {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 0; margin-top: 8px; border-top: 1px solid #e2e8f0;
+        }
+
+        /* ── Step views ── */
+        .step-view { display: none; }
+        .step-view.active { display: block; }
+
+        /* ── Separator ── */
+        .separator { border-top: 1px solid #e2e8f0; margin: 16px 0; }
+
+        /* ── Polling / deployment status ── */
+        .poll-status-bar {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 16px 18px; border-radius: 8px; margin-bottom: 20px;
+        }
+        .poll-status-bar.waiting { background: #f8fafc; border: 1px solid #e2e8f0; }
+        .poll-status-bar.success { background: #f0fdf4; border: 1px solid #86efac; }
+        .poll-status-bar.error { background: #fef2f2; border: 1px solid #fca5a5; }
+        .poll-status-label { font-size: 14px; font-weight: 600; color: #1a2332; margin-bottom: 4px; }
+        .poll-status-detail { font-size: 12px; color: #64748b; line-height: 1.5; }
+        .poll-status-bar.success .poll-status-label { color: #065f46; }
+        .poll-status-bar.success .poll-status-detail { color: #047857; }
+        .poll-status-bar.error .poll-status-label { color: #991b1b; }
+        .poll-status-bar.error .poll-status-detail { color: #b91c1c; }
+
+        .poll-spinner {
+            width: 24px; height: 24px; border: 3px solid #e2e8f0;
+            border-top-color: #049fd9; border-radius: 50%; flex-shrink: 0;
+            animation: spin 1s linear infinite; margin-top: 2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .poll-success-icon {
+            width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+            background: #059669; color: #fff; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px;
+        }
+        .poll-error-icon {
+            width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+            background: #dc2626; color: #fff; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px;
+        }
+
+        .poll-checks { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+        .poll-check {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .poll-check:last-child { border-bottom: none; }
+        .poll-check-icon {
+            width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; margin-top: 1px;
+        }
+        .poll-check-icon.pending { background: #f1f5f9; color: #94a3b8; font-size: 16px; }
+        .poll-check-icon.pass { background: #d1fae5; color: #059669; }
+        .poll-check-icon.fail { background: #fee2e2; color: #dc2626; }
+        .poll-check-icon.checking { background: #e0f2fe; color: #0369a1; }
+        .poll-check-label { font-size: 13px; font-weight: 500; color: #1a2332; }
+        .poll-check-detail { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+        .poll-hint { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .poll-animate { animation: fadeSlideIn 0.3s ease-out; }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .scope-group, .auth-group { flex-direction: column; }
+            .region-grid { grid-template-columns: 1fr; }
+            .stat-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <!-- ───── Sidebar ───── -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <span class="cisco-logo">cisco</span>
+            <strong>Security Cloud Control</strong>
+        </div>
+        <div class="sidebar-section">Platform menu</div>
+        <div class="sidebar-item" style="font-size:12px; color:#64748b;">AI Defense</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-item">&#8962; Dashboard</div>
+        <div class="sidebar-item">&#9881; AI Assets <span class="chevron">&#9662;</span></div>
+        <div class="sidebar-item">&#128196; Applications</div>
+        <div class="sidebar-item">&#9733; AI Red Teaming</div>
+        <div class="sidebar-item">&#128220; Policy Studio</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-item">&#128274; Secure <span class="chevron">&#9662;</span></div>
+        <div class="sidebar-item">&#9200; Events <span class="chevron">&#9662;</span></div>
+        <div class="sidebar-item">&#128269; Scans</div>
+        <div class="sidebar-item">&#128101; Projects</div>
+        <div class="sidebar-item active">&#9881; Administration</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">Platform services</div>
+        <div class="sidebar-item sidebar-sub">Favorites</div>
+        <div class="sidebar-item sidebar-sub">Common Audit Log</div>
+        <div class="sidebar-item sidebar-sub">Platform Management</div>
+    </nav>
+
+    <div class="main-wrap">
+        <!-- ───── Topbar ───── -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <div class="org-badge"><span class="org-icon">&#9881;</span> Organization <strong>Preview QE</strong></div>
+            </div>
+            <div class="topbar-right">
+                <span>&#127912; Canvas</span> <span>&#128276;</span> <span>&#10068;</span> <span>&#128100; Manu Tripathi</span>
+            </div>
+        </div>
+
+        <!-- ───── Content ───── -->
+        <div class="content">
+            <div class="breadcrumb" onclick="showStep('configure')">&#8592; Integrations</div>
+            <div class="page-title">Connect to Google Cloud Platform</div>
+            <p class="page-subtitle">Connect a Google Cloud organization, folder, or project to discover Vertex AI and Agent Platform assets in AI Defense.</p>
+
+            <!-- Stepper -->
+            <div class="stepper">
+                <div class="step active" id="stepper-configure" onclick="showStep('configure')">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Configure</div>
+                </div>
+                <div class="step-connector" id="connector-1"></div>
+                <div class="step active" id="stepper-deploy" onclick="showStep('deploy')">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Deploy</div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════ STEP 1: CONFIGURE ═══════════════════ -->
+            <div class="step-view active" id="view-configure">
+
+                <!-- Discovery scope -->
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-icon">&#127758;</span>
+                        Discovery scope
+                    </div>
+                    <div class="section-body">
+                        <p class="section-hint">Name the connector and choose what AI Defense looks at. Nothing on this step grants access or creates resources.</p>
+
+                        <div class="form-group">
+                            <label class="form-label">Display name <span class="required">*</span></label>
+                            <input class="form-input" type="text" value="Production GCP" placeholder="e.g., ACME GCP — Production">
+                            <div class="form-help">Display name for this connector in AI Defense.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Connector scope <span class="required">*</span></label>
+                            <div class="scope-group">
+                                <div class="scope-card selected" onclick="selectScope(this, 'org')">
+                                    <input type="radio" name="scope" value="org" checked>
+                                    <div class="scope-card-label">Organization</div>
+                                    <div class="scope-card-desc">Covers every eligible project, including future ones.</div>
+                                </div>
+                                <div class="scope-card" onclick="selectScope(this, 'folder')">
+                                    <input type="radio" name="scope" value="folder">
+                                    <div class="scope-card-label">Folder</div>
+                                    <div class="scope-card-desc">One folder and its child folders. Use for delegated teams.</div>
+                                </div>
+                                <div class="scope-card" onclick="selectScope(this, 'project')">
+                                    <input type="radio" name="scope" value="project">
+                                    <div class="scope-card-label">Project</div>
+                                    <div class="scope-card-desc">Exactly one project. Use for a pilot or regulated workload.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="org-id-group">
+                            <label class="form-label">Google Cloud organization ID <span class="required">*</span></label>
+                            <input class="form-input" type="text" placeholder="e.g., 123456789012">
+                            <div class="form-help">Use the numeric organization ID, not the display name.</div>
+                        </div>
+                        <div class="form-group" id="folder-id-group" style="display:none;">
+                            <label class="form-label">Folder ID <span class="required">*</span></label>
+                            <input class="form-input" type="text" placeholder="e.g., 556678789899">
+                            <div class="form-help">Numeric folder ID. Find it in the GCP Console resource manager.</div>
+                        </div>
+                        <div class="form-group" id="project-id-group" style="display:none;">
+                            <label class="form-label">Project ID <span class="required">*</span></label>
+                            <input class="form-input" type="text" placeholder="e.g., my-ml-project">
+                            <div class="form-help">The project ID (not the display name or project number).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Authentication method -->
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-icon">&#128272;</span>
+                        Authentication method
+                    </div>
+                    <div class="section-body">
+                        <p class="section-hint">Choose how AI Defense authenticates to GCP. The generated deployment command configures this credential.</p>
+
+                        <div class="form-group">
+                            <div class="auth-group">
+                                <div class="auth-card selected" onclick="selectAuth(this, 'wif')">
+                                    <input type="radio" name="auth" value="wif" checked>
+                                    <div class="auth-card-label">Workload Identity Federation <span class="badge-rec">Recommended</span></div>
+                                    <div class="auth-card-desc">Default. AI Defense impersonates a dedicated service account. No long-lived key is stored.</div>
+                                </div>
+                                <div class="auth-card" onclick="selectAuth(this, 'sa-key')">
+                                    <input type="radio" name="auth" value="sa-key">
+                                    <div class="auth-card-label">Service Account Key <span class="badge-legacy">Legacy</span></div>
+                                    <div class="auth-card-desc">Download a JSON key file. Migration from Multicloud Defense or an approved exception only.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WIF-specific: deployment project -->
+                        <div id="wif-fields">
+                            <div class="form-group">
+                                <label class="form-label">Deployment project ID <span class="required">*</span></label>
+                                <input class="form-input" type="text" value="" placeholder="e.g., aid-security-prod">
+                                <div class="form-help">Project where the AI Defense service account, workload identity pool, and optional Pub/Sub resources are created.</div>
+                                <div class="inline-check">
+                                    <input type="checkbox" id="auto-create" checked>
+                                    <label for="auto-create">Create project automatically if it does not exist</label>
+                                </div>
+                            </div>
+
+                            <div class="info-box">
+                                <div class="info-box-title">What AI Defense creates in the deployment project</div>
+                                <div class="info-box-body">
+                                    <strong>Always created</strong><br>
+                                    Service account &mdash; <code>aid-connector@&lt;project&gt;.iam.gserviceaccount.com</code><br>
+                                    Workload identity pool &mdash; <code>aid-defense-pool</code><br>
+                                    Workload identity provider &mdash; <code>aid-defense-provider</code><br><br>
+                                    <strong>Created only if the matching capability is on</strong><br>
+                                    Pub/Sub topic and subscription &mdash; <code>aid-audit-events</code> &nbsp;(requires in-use detection)<br>
+                                    Cloud Logging sink &mdash; <code>aid-audit-sink</code> &nbsp;(requires in-use detection)<br><br>
+                                    Nothing is created in the projects being discovered. AI Defense only reads from those.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SA Key fields (hidden by default) -->
+                        <div id="sa-key-fields" style="display:none;">
+                            <div class="info-box" style="background:#fffbeb; border-color:#fcd34d;">
+                                <div class="info-box-title" style="color:#92400e;">Service account keys require manual rotation</div>
+                                <div class="info-box-body">
+                                    Google recommends Workload Identity Federation for production workloads. Service account keys are long-lived credentials that must be rotated periodically. Use this option only for migration from Multicloud Defense or when federation is blocked by your security policies.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Capabilities -->
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-icon">&#9889;</span>
+                        Capabilities
+                    </div>
+                    <div class="section-body">
+                        <p class="section-hint">Discovery is always on. Validation and in-use detection add permissions to the generated deployment command.</p>
+                        <div class="cap-list">
+                            <div class="cap-item">
+                                <input type="checkbox" checked disabled>
+                                <div>
+                                    <div class="cap-label">Discover and inventory GCP AI assets <span class="cap-tag">Required</span></div>
+                                    <div class="cap-desc">Reads Vertex AI and Agent Platform metadata for models, deployments, agents, files, datasets, and RAG corpora.</div>
+                                </div>
+                            </div>
+                            <div class="cap-item">
+                                <input type="checkbox" id="cap-validation">
+                                <div>
+                                    <div class="cap-label">Enable AI Defense Validation</div>
+                                    <div class="cap-desc">Adds non-mutating invoke and query permissions for supported endpoints, publisher models, and reasoning engines.</div>
+                                </div>
+                            </div>
+                            <div class="cap-item">
+                                <input type="checkbox" id="cap-audit">
+                                <div>
+                                    <div class="cap-label">Enable in-use detection</div>
+                                    <div class="cap-desc">Creates a Cloud Logging sink to Pub/Sub so foundation model usage can be classified as in use.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced options -->
+                <div class="advanced-toggle" onclick="toggleAdvanced()">
+                    <span class="arrow">&#9654;</span>
+                    <span class="adv-label">Advanced options</span>
+                    <span class="adv-hint">Regions, exclusions</span>
+                </div>
+
+                <div class="advanced-panel" id="adv-panel">
+                    <div class="section">
+                        <div class="section-body">
+                            <!-- Regions -->
+                            <div class="form-group">
+                                <label class="form-label">Regions</label>
+                                <div class="region-radio-group">
+                                    <div class="region-radio selected" onclick="selectRegionMode(this, 'all')">
+                                        <input type="radio" name="region-mode" value="all" checked>
+                                        <div>
+                                            <div class="region-radio-label">All supported Vertex AI regions <span class="badge-rec">Default</span></div>
+                                            <div class="region-radio-desc">Scan every supported region. Guarantees complete inventory regardless of where models are deployed.</div>
+                                        </div>
+                                    </div>
+                                    <div class="region-radio" onclick="selectRegionMode(this, 'specific')">
+                                        <input type="radio" name="region-mode" value="specific">
+                                        <div>
+                                            <div class="region-radio-label">Specific regions only</div>
+                                            <div class="region-radio-desc">Limit discovery to selected regions. Models deployed in unselected regions will not appear in inventory.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="region-picker" style="display:none;">
+                                    <div class="form-help" style="margin-bottom:8px;">Select the regions to scan.</div>
+                                    <div class="region-grid">
+                                        <label class="region-chip"><input type="checkbox" checked> <span class="region-name">us-central1</span> <span class="region-loc">Iowa</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">us-east1</span> <span class="region-loc">S. Carolina</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">us-west1</span> <span class="region-loc">Oregon</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">us-west4</span> <span class="region-loc">Nevada</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">europe-west1</span> <span class="region-loc">Belgium</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">europe-west2</span> <span class="region-loc">London</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">europe-west4</span> <span class="region-loc">Netherlands</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">asia-southeast1</span> <span class="region-loc">Singapore</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">asia-northeast1</span> <span class="region-loc">Tokyo</span></label>
+                                        <label class="region-chip"><input type="checkbox"> <span class="region-name">asia-south1</span> <span class="region-loc">Mumbai</span></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <!-- Exclude projects -->
+                            <div class="form-group">
+                                <label class="form-label">Exclude project IDs <span style="font-weight:400; color:#94a3b8;">(optional)</span></label>
+                                <textarea class="form-input" placeholder="e.g., sandbox-ml-01, dev-playground, ..."></textarea>
+                                <div class="form-help">Comma-separated list of project IDs to leave out of the AI Defense scan.</div>
+                            </div>
+
+                            <!-- Exclude folders -->
+                            <div class="form-group">
+                                <label class="form-label">Exclude folder IDs <span style="font-weight:400; color:#94a3b8;">(optional)</span></label>
+                                <textarea class="form-input" placeholder="e.g., 456789012345, ..."></textarea>
+                                <div class="form-help">Comma-separated list of numeric folder IDs. Projects inside them are skipped.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer-actions">
+                    <button class="btn btn-ghost">Cancel</button>
+                    <button class="btn btn-primary" onclick="showStep('deploy')">Next</button>
+                </div>
+            </div>
+
+            <!-- ═══════════════════ STEP 2: DEPLOY ═══════════════════ -->
+            <div class="step-view" id="view-deploy">
+
+                <!-- WIF deploy path -->
+                <div id="deploy-wif">
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="section-icon">&#128640;</span>
+                            Deploy the connector
+                        </div>
+                        <div class="section-body">
+                            <p class="section-hint">Run the generated command in your GCP environment. It creates the AI Defense service account, assigns roles at the selected scope, and configures authentication.</p>
+
+                            <div class="prereq-banner">
+                                <span class="icon">&#9888;&#65039;</span>
+                                <div>Sign in to the correct GCP organization and make sure your account has <strong>Organization Admin</strong> (or Folder/Project Admin for narrower scopes) and <strong>Project Creator</strong> (if auto-creating the deployment project), then run the command below.</div>
+                            </div>
+
+                            <label class="form-label">Deployment method</label>
+                            <div class="form-help" style="margin-bottom:12px;">Cloud Shell is the default guided path. One command, scoped to the selections you made in step 1.</div>
+
+                            <label class="form-label" style="margin-top:16px;">Generated command</label>
+                            <div class="form-help" style="margin-bottom:8px;">Built from your selections and regenerated whenever they change. It grants only the roles the enabled capabilities need.</div>
+                            <div class="script-box">
+                                <span class="kw">DEPLOYMENT_PROJECT</span>=<span class="str">aid-security-prod</span><br>
+                                <span class="kw">SCOPE</span>=<span class="str">organizations/123456789012</span><br>
+                                <span class="kw">AUTO_CREATE_PROJECT</span>=<span class="str">true</span><br>
+                                <span class="kw">AUTH</span>=<span class="str">workload-identity-federation</span><br>
+                                <span class="kw">CAPABILITIES</span>=<span class="str">discovery,validation,audit-logs</span><br>
+                                <br>
+                                <span class="cmt"># Run in Cloud Shell or any terminal with gcloud auth</span><br>
+                                bash &lt;(curl -sSL <span class="str">https://ai-defense.cisco.com/deploy/gcp/&lt;connector-id&gt;</span>)
+                            </div>
+
+                            <div class="script-actions">
+                                <button class="btn btn-outline" onclick="return false;">&#128203; Copy command</button>
+                                <button class="btn btn-primary" onclick="return false;">&#9729;&#65039; Open Cloud Shell</button>
+                            </div>
+
+                            <div class="info-box" style="margin-top:0;">
+                                <div class="info-box-title">Roles this command grants, and why</div>
+                                <div class="info-box-body">
+                                    <code>roles/aiplatform.viewer</code> &mdash; Discover GCP AI assets (always on)<br>
+                                    <code>roles/aiplatform.user</code> &mdash; AI Defense Validation for models and agents<br>
+                                    <code>roles/logging.configWriter</code> &mdash; In-use detection (audit logs)<br>
+                                    <code>roles/pubsub.editor</code> &mdash; In-use detection (audit logs)<br>
+                                    <code>roles/iam.workloadIdentityPoolAdmin</code> &mdash; Creates the pool and provider during deployment only
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deployment status (background polling) -->
+                    <div class="section" id="poll-section">
+                        <div class="section-header">
+                            <span class="section-icon" id="poll-header-icon">&#9203;</span>
+                            <span id="poll-header-text">Waiting for deployment</span>
+                        </div>
+                        <div class="section-body">
+
+                            <!-- State 1: Waiting -->
+                            <div id="poll-waiting">
+                                <div class="poll-status-bar waiting">
+                                    <div class="poll-spinner"></div>
+                                    <div>
+                                        <div class="poll-status-label">Listening for deployment...</div>
+                                        <div class="poll-status-detail">AI Defense is checking whether the service account and roles exist in <code>aid-security-prod</code>. Run the command above, then come back here. This page updates automatically.</div>
+                                    </div>
+                                </div>
+
+                                <div class="poll-checks">
+                                    <div class="poll-check" id="pc-sa">
+                                        <div class="poll-check-icon pending" id="pc-sa-icon">&#8226;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Service account</div>
+                                            <div class="poll-check-detail" id="pc-sa-detail">Checking for <code>aid-connector@aid-security-prod.iam.gserviceaccount.com</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check" id="pc-wif">
+                                        <div class="poll-check-icon pending" id="pc-wif-icon">&#8226;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Workload Identity Federation</div>
+                                            <div class="poll-check-detail" id="pc-wif-detail">Checking for identity pool and provider</div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check" id="pc-roles">
+                                        <div class="poll-check-icon pending" id="pc-roles-icon">&#8226;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Role assignments</div>
+                                            <div class="poll-check-detail" id="pc-roles-detail">Checking for required roles at the selected scope</div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check" id="pc-api">
+                                        <div class="poll-check-icon pending" id="pc-api-icon">&#8226;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">API reachability</div>
+                                            <div class="poll-check-detail" id="pc-api-detail">Will test after authentication is confirmed</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="poll-hint">
+                                    <span style="color:#64748b; font-size:12px;">Checking every 10 seconds &middot; Started <span id="poll-timer">0s</span> ago</span>
+                                    <button class="btn btn-ghost" style="margin-left:auto; padding:6px 12px; font-size:12px;" onclick="simulateDeploy()">Simulate deployment (demo)</button>
+                                </div>
+                            </div>
+
+                            <!-- State 2: Detected / Success -->
+                            <div id="poll-success" style="display:none;">
+                                <div class="poll-status-bar success">
+                                    <div class="poll-success-icon">&#10003;</div>
+                                    <div>
+                                        <div class="poll-status-label">Deployment detected</div>
+                                        <div class="poll-status-detail">All resources verified. The connector is ready to save.</div>
+                                    </div>
+                                </div>
+
+                                <div class="poll-checks">
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Service account</div>
+                                            <div class="poll-check-detail"><code>aid-connector@aid-security-prod.iam.gserviceaccount.com</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Workload Identity Federation</div>
+                                            <div class="poll-check-detail"><code>aid-defense-pool</code> &middot; <code>aid-defense-provider</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Role assignments</div>
+                                            <div class="poll-check-detail">5 of 5 roles present at <code>organizations/123456789012</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">API reachability</div>
+                                            <div class="poll-check-detail">Cloud Asset API confirmed &middot; 412 projects visible</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- State 3: Partial / Error -->
+                            <div id="poll-error" style="display:none;">
+                                <div class="poll-status-bar error">
+                                    <div class="poll-error-icon">&#10007;</div>
+                                    <div>
+                                        <div class="poll-status-label">Deployment incomplete</div>
+                                        <div class="poll-status-detail">Some checks failed. Review the errors below, fix them in GCP, and click Re-check.</div>
+                                    </div>
+                                </div>
+
+                                <div class="poll-checks">
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Service account</div>
+                                            <div class="poll-check-detail"><code>aid-connector@aid-security-prod.iam.gserviceaccount.com</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pass">&#10003;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Workload Identity Federation</div>
+                                            <div class="poll-check-detail"><code>aid-defense-pool</code> &middot; <code>aid-defense-provider</code></div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon fail">&#10007;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">Role assignments</div>
+                                            <div class="poll-check-detail" style="color:#dc2626;">Missing <code>roles/aiplatform.viewer</code> at the organization scope. Grant it to the service account and re-check.</div>
+                                        </div>
+                                    </div>
+                                    <div class="poll-check">
+                                        <div class="poll-check-icon pending">&#8226;</div>
+                                        <div class="poll-check-text">
+                                            <div class="poll-check-label">API reachability</div>
+                                            <div class="poll-check-detail">Skipped (depends on role assignments)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="poll-hint">
+                                    <button class="btn btn-outline" style="padding:6px 14px; font-size:12px;" onclick="simulateDeploy()">Re-check</button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- SA Key deploy path (hidden by default) -->
+                <div id="deploy-sa-key" style="display:none;">
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="section-icon">&#128272;</span>
+                            Deploy the connector (Service Account Key)
+                        </div>
+                        <div class="section-body">
+                            <p class="section-hint">Run the generated command in Cloud Shell. It creates a service account and downloads a JSON key file. Upload the key to AI Defense to complete setup.</p>
+
+                            <div class="prereq-banner">
+                                <span class="icon">&#9888;&#65039;</span>
+                                <div>Sign in to the correct GCP organization. Your account needs <strong>Service Account Admin</strong> and the relevant role admin permissions at the selected scope.</div>
+                            </div>
+
+                            <label class="form-label">Generated command</label>
+                            <div class="script-box">
+                                <span class="kw">SCOPE</span>=<span class="str">organizations/123456789012</span><br>
+                                <span class="kw">SA_NAME</span>=<span class="str">aid-connector</span><br>
+                                <span class="kw">CAPABILITIES</span>=<span class="str">discovery,validation,audit-logs</span><br>
+                                <br>
+                                <span class="cmt"># Creates service account and downloads the key</span><br>
+                                bash &lt;(curl -sSL <span class="str">https://ai-defense.cisco.com/deploy/gcp/sa-key/&lt;connector-id&gt;</span>)
+                            </div>
+
+                            <div class="script-actions">
+                                <button class="btn btn-outline">&#128203; Copy command</button>
+                                <button class="btn btn-primary">&#9729;&#65039; Open Cloud Shell</button>
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <label class="form-label">Upload service account key <span class="required">*</span></label>
+                            <div class="form-help" style="margin-bottom:8px;">Upload the JSON key file that the script downloaded. AI Defense encrypts and stores this credential.</div>
+                            <div class="upload-zone">
+                                &#128194; Drop the .json key file here, or click to browse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer-actions">
+                    <button class="btn btn-ghost" onclick="showStep('configure')">Back</button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-ghost">Cancel</button>
+                        <button class="btn btn-primary" id="btn-complete" disabled style="opacity:0.5; cursor:not-allowed;">Complete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectScope(el, value) {
+        document.querySelectorAll('.scope-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+
+        document.getElementById('org-id-group').style.display = value === 'org' ? '' : 'none';
+        document.getElementById('folder-id-group').style.display = value === 'folder' ? '' : 'none';
+        document.getElementById('project-id-group').style.display = value === 'project' ? '' : 'none';
+    }
+
+    function selectAuth(el, value) {
+        document.querySelectorAll('.auth-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+
+        document.getElementById('wif-fields').style.display = value === 'wif' ? '' : 'none';
+        document.getElementById('sa-key-fields').style.display = value === 'sa-key' ? '' : 'none';
+
+        // Also toggle deploy view
+        document.getElementById('deploy-wif').style.display = value === 'wif' ? '' : 'none';
+        document.getElementById('deploy-sa-key').style.display = value === 'sa-key' ? '' : 'none';
+    }
+
+    function toggleAdvanced() {
+        const toggle = document.querySelector('.advanced-toggle');
+        const panel = document.getElementById('adv-panel');
+        toggle.classList.toggle('open');
+        panel.classList.toggle('open');
+    }
+
+    function selectRegionMode(el, value) {
+        document.querySelectorAll('.region-radio').forEach(r => r.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+        document.getElementById('region-picker').style.display = value === 'specific' ? '' : 'none';
+    }
+
+    function showStep(step) {
+        document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-' + step).classList.add('active');
+
+        const stepperConfigure = document.getElementById('stepper-configure');
+        const stepperDeploy = document.getElementById('stepper-deploy');
+        const connector = document.getElementById('connector-1');
+
+        if (step === 'configure') {
+            stepperConfigure.className = 'step active';
+            stepperDeploy.className = 'step pending';
+            connector.className = 'step-connector';
+        } else {
+            stepperConfigure.className = 'step done';
+            stepperDeploy.className = 'step active';
+            connector.className = 'step-connector done';
+            startPollingTimer();
+        }
+    }
+
+    // Polling timer
+    let timerInterval = null;
+    let timerSeconds = 0;
+
+    function startPollingTimer() {
+        if (timerInterval) return;
+        timerSeconds = 0;
+        timerInterval = setInterval(() => {
+            timerSeconds++;
+            const el = document.getElementById('poll-timer');
+            if (el) el.textContent = timerSeconds + 's';
+        }, 1000);
+    }
+
+    function stopPollingTimer() {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+
+    // Simulate deployment detection (demo button)
+    function simulateDeploy() {
+        const checks = [
+            { icon: 'pc-sa-icon', detail: 'pc-sa-detail', passText: '<code>aid-connector@aid-security-prod.iam.gserviceaccount.com</code>', delay: 800 },
+            { icon: 'pc-wif-icon', detail: 'pc-wif-detail', passText: '<code>aid-defense-pool</code> &middot; <code>aid-defense-provider</code>', delay: 1600 },
+            { icon: 'pc-roles-icon', detail: 'pc-roles-detail', passText: '5 of 5 roles present at <code>organizations/123456789012</code>', delay: 2600 },
+            { icon: 'pc-api-icon', detail: 'pc-api-detail', passText: 'Cloud Asset API confirmed &middot; 412 projects visible', delay: 3400 },
+        ];
+
+        // Animate each check passing one by one
+        checks.forEach(c => {
+            setTimeout(() => {
+                const iconEl = document.getElementById(c.icon);
+                const detailEl = document.getElementById(c.detail);
+                if (iconEl) {
+                    iconEl.className = 'poll-check-icon pass';
+                    iconEl.innerHTML = '&#10003;';
+                }
+                if (detailEl) detailEl.innerHTML = c.passText;
+            }, c.delay);
+        });
+
+        // After all checks pass, switch to success state
+        setTimeout(() => {
+            stopPollingTimer();
+            document.getElementById('poll-waiting').style.display = 'none';
+            document.getElementById('poll-success').style.display = '';
+            document.getElementById('poll-success').classList.add('poll-animate');
+            document.getElementById('poll-header-icon').innerHTML = '&#9989;';
+            document.getElementById('poll-header-text').textContent = 'Deployment detected';
+            document.getElementById('poll-section').style.borderColor = '#86efac';
+
+            // Enable Complete button
+            const btn = document.getElementById('btn-complete');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }, 4200);
+    }
+
+    // Initialize step 1 active
+    showStep('configure');
+</script>
+</body>
+</html>
